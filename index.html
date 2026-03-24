@@ -18,7 +18,8 @@
     /* アイテムリスト */
     .item-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
     .item-card { background: white; border-radius: 12px; padding: 15px; display: flex; align-items: flex-start; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
-    .item-card img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; margin-right: 20px; background: #eee; }
+    /* 画像表示設定（表示されない場合に備えて背景色を設定） */
+    .item-card img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; margin-right: 20px; background: #eee; border: 1px solid #eee; }
     .item-info { flex: 1; }
     .item-info h3 { margin: 0 0 12px 0; font-size: 1.1em; color: #222; }
 
@@ -33,14 +34,19 @@
     .btn-add:active { transform: translateY(2px); }
 
     /* フッター送信エリア */
-    .footer-bar { position: sticky; bottom: 20px; background: white; padding: 20px; border-radius: 50px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-top: 40px; text-align: center; display: flex; justify-content: space-between; align-items: center; }
+    .footer-bar { position: sticky; bottom: 20px; background: white; padding: 20px; border-radius: 50px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-top: 40px; text-align: center; display: flex; justify-content: space-between; align-items: center; z-index: 100; }
     .cart-info { font-weight: bold; color: var(--primary); margin-left: 20px; }
     .btn-submit { background: #e63946; color: white; border: none; padding: 12px 40px; border-radius: 30px; font-size: 1.1em; font-weight: bold; cursor: pointer; margin-right: 10px; }
     .btn-submit:disabled { background: #ccc; }
 
+    /* 読み込み中・エラーメッセージ styling */
+    #statusMessage { text-align: center; padding: 40px; color: #666; font-size: 1.1em; grid-column: 1 / -1; }
+
     @media (max-width: 600px) {
-      .item-card { flex-direction: column; }
-      .item-card img { width: 100%; height: 150px; margin-bottom: 15px; }
+      .item-card { flex-direction: column; align-items: center; text-align: center; }
+      .item-card img { width: 100%; height: auto; max-height: 200px; margin-right: 0; margin-bottom: 15px; }
+      .controls-container { justify-content: center; }
+      .footer-bar { border-radius: 12px; bottom: 10px; padding: 15px; }
     }
   </style>
 </head>
@@ -78,7 +84,7 @@
   </div>
 
   <div id="itemList" class="item-grid">
-    <p style="text-align: center;">データを読み込み中...</p>
+    <div id="statusMessage">マスタデータを読み込み中...</div>
   </div>
 
   <div class="footer-bar">
@@ -87,18 +93,60 @@
   </div>
 
   <script>
+    // ★先ほどGASで発行した最新のウェブアプリURLに書き換えてください★
     const GAS_URL = 'https://script.google.com/macros/s/AKfycbyr3ps5gUhQnLOZGRnAvcwqqLXrCkkh8lIt560-phkENPUe28Vv6dWNYlGsOTZ9PN8K/exec';
+    
     const SIZES = ['A0', 'A1', 'B0', 'A2', 'A3'];
     let orderItems = [];
+
+    /**
+     * Google ドライブの共有リンクを「直リンク」に変換する魔法の関数
+     */
+    function convertDriveUrl(url) {
+      if (!url || typeof url !== 'string') return '';
+      // Googleドライブのリンク以外はそのまま返す（外部サイトの画像など）
+      if (!url.includes('drive.google.com')) return url;
+
+      let fileId = '';
+      
+      // パターン1: standard share link (/file/d/FILE_ID/view...)
+      let idMatch = url.match(/\/file\/d\/([-\w]{25,})/);
+      if (idMatch && idMatch[1]) {
+        fileId = idMatch[1];
+      } else {
+        // パターン2: open?id=FILE_ID
+        let idMatch2 = url.match(/id=([-\w]{25,})/);
+        if (idMatch2 && idMatch2[1]) {
+          fileId = idMatch2[1];
+        }
+      }
+
+      // ファイルIDが抜けたら直リンク形式に再構築
+      if (fileId) {
+        // 最も安定している lh3.googleusercontent.com 形式を使用
+        return `https://lh3.googleusercontent.com/d/${fileId}`;
+      }
+      
+      // 変換失敗したら元のURLを返す（broken imageになる可能性あり）
+      return url;
+    }
 
     // 起動時にマスタ取得
     window.onload = async () => {
       try {
         const res = await fetch(GAS_URL);
-        const items = await res.json();
-        renderItems(items);
+        // GETリクエストの結果がテキスト（エラーメッセージ）の場合を考慮
+        const contentType = res.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") !== -1) {
+          const items = await res.json();
+          renderItems(items);
+        } else {
+          // エラーメッセージが表示された場合（GAS側でのID設定ミスなど）
+          const errorText = await res.text();
+          throw new Error(errorText);
+        }
       } catch (e) {
-        document.getElementById('itemList').innerHTML = 'データの取得に失敗しました。';
+        document.getElementById('itemList').innerHTML = `<div id="statusMessage">データの取得に失敗しました。<br><span style="color:red; font-size:0.8em;">${e.message}</span></div>`;
       }
     };
 
@@ -106,9 +154,17 @@
       const container = document.getElementById('itemList');
       container.innerHTML = '';
 
+      if (items.length === 0) {
+        container.innerHTML = '<div id="statusMessage">マスタにアイテムが登録されていません。</div>';
+        return;
+      }
+
       items.forEach((item, idx) => {
+        // ここで変換関数を通す★
+        const directImageUrl = convertDriveUrl(item.imageUrl);
+
         let html = `<div class="item-card">
-          <img src="${item.imageUrl}" alt="${item.name}">
+          <img src="${directImageUrl}" alt="${item.name}" onerror="this.src='https://placehold.jp/120x120.png?text=NoImage';">
           <div class="item-info">
             <h3>${item.name}</h3>
             <div class="controls-container">`;
@@ -136,54 +192,71 @@
       });
     }
 
-    // 追加ボタン押下時
+    // アイテム注文リストへの追加処理（応答演出付き）
     function addItem(name, size, idx) {
       const qId = size === '-' ? `q-${idx}-none` : `q-${idx}-${size}`;
       const bId = size === '-' ? `b-${idx}-none` : `b-${idx}-${size}`;
-      const qty = document.getElementById(qId).value;
+      
+      const qInput = document.getElementById(qId);
+      const qty = parseInt(qInput.value);
       const btn = document.getElementById(bId);
 
+      if(isNaN(qty) || qty <= 0) {
+        alert('数量を正しく入力してください。');
+        return;
+      }
+
+      // 注文リストへ追加（サイズ違いも別アイテムとして追加される）
       orderItems.push({ name: name, size: size, quantity: qty });
       
-      // ボタンの応答フィードバック
+      // ボタンの応答（フィードバック）の演出
       btn.innerText = 'OK! ✔';
       btn.classList.add('active');
+      
+      // 0.8秒後に元の表示に戻す
       setTimeout(() => {
         btn.innerText = '追加';
         btn.classList.remove('active');
       }, 800);
 
+      // 合計選択数の更新
       document.getElementById('cartCount').innerText = orderItems.length;
     }
 
-    // 発注確定
+    // 発注確定・送信処理
     async function submitOrder() {
       const store = document.getElementById('storeSelect').value;
       const user = document.getElementById('userName').value;
       const btn = document.getElementById('submitBtn');
 
-      if (!store || !user || orderItems.length === 0) {
-        alert('店舗、氏名の入力、およびアイテムの選択が必要です。');
-        return;
-      }
+      // 入力バリデーション
+      if (!store) { alert('発注店舗を選択してください。'); return; }
+      if (!user) { alert('発注者名を入力してください。'); return; }
+      if (orderItems.length === 0) { alert('アイテムが一つも選択されていません。'); return; }
 
-      if(!confirm('この内容で発注を確定しますか？')) return;
+      if(!confirm(`店舗: ${store}\n発注者: ${user}\n合計 ${orderItems.length} 点の商品を発注します。よろしいですか？`)) return;
 
+      // 送信中表示
       btn.disabled = true;
       btn.innerText = '送信中...';
 
       try {
         const res = await fetch(GAS_URL, {
           method: 'POST',
+          // GASのdoPostへJSONデータを文字列にして送る
           body: JSON.stringify({ store: store, user: user, items: orderItems })
         });
         const result = await res.json();
+        
         if (result.status === 'success') {
-          alert('発注が完了しました！');
-          location.reload();
+          alert('発注が完了しました！\nお疲れ様でした。');
+          location.reload(); // 画面をリロードしてリセット
+        } else {
+          throw new Error(result.message);
         }
       } catch (e) {
-        alert('エラーが発生しました。');
+        alert('エラーが発生しました。発注リストに反映されていない可能性があります。');
+        console.error(e);
         btn.disabled = false;
         btn.innerText = '発注を確定する';
       }
