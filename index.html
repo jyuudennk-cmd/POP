@@ -6,7 +6,7 @@
   <title>POP・備品発注システム</title>
   <style>
     :root { --primary: #007bff; --success: #28a745; --danger: #e63946; --bg: #f8f9fa; }
-    body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: #333; line-height: 1.6; padding: 20px; max-width: 900px; margin: 0 auto; padding-bottom: 100px; }
+    body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: #333; line-height: 1.6; padding: 20px; max-width: 900px; margin: 0 auto; padding-bottom: 120px; }
     h1 { text-align: center; color: #444; margin-bottom: 30px; }
 
     /* 設定エリア */
@@ -35,15 +35,22 @@
     .cart-info { font-weight: bold; color: var(--primary); }
     .btn-open-confirm { background: var(--danger); color: white; border: none; padding: 12px 30px; border-radius: 30px; font-size: 1em; font-weight: bold; cursor: pointer; }
 
-    /* ★ポップアップ（モーダル）のスタイル★ */
-    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; }
-    .modal-content { background: white; width: 90%; max-width: 500px; border-radius: 16px; padding: 25px; max-height: 80vh; overflow-y: auto; }
+    /* ポップアップ（モーダル） */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; }
+    .modal-content { background: white; width: 95%; max-width: 500px; border-radius: 16px; padding: 25px; max-height: 85vh; overflow-y: auto; position: relative; }
     .modal-header { border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 15px; text-align: center; }
+    
+    /* 確認リストの削除機能付きスタイル */
     .order-summary-list { list-style: none; padding: 0; margin-bottom: 20px; }
-    .order-summary-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed #eee; font-size: 0.95em; }
-    .modal-footer { display: flex; gap: 10px; }
-    .btn-modal { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-    .btn-cancel { background: #ddd; color: #333; }
+    .order-summary-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px dashed #ddd; font-size: 0.95em; }
+    .item-name-box { flex-grow: 1; }
+    .item-qty-box { width: 60px; text-align: right; font-weight: bold; padding-right: 15px; }
+    .btn-remove { background: none; border: 1px solid #ccc; color: #999; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+    .btn-remove:hover { border-color: var(--danger); color: var(--danger); background: #fff5f5; }
+
+    .modal-footer { display: flex; gap: 10px; margin-top: 20px; }
+    .btn-modal { flex: 1; padding: 14px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1em; }
+    .btn-cancel { background: #eee; color: #555; }
     .btn-execute { background: var(--success); color: white; }
 
     #statusMessage { text-align: center; padding: 40px; color: #666; }
@@ -51,7 +58,7 @@
     @media (max-width: 600px) {
       .item-card { flex-direction: column; align-items: center; }
       .item-card img { margin-right: 0; margin-bottom: 15px; width: 100%; height: 120px; }
-      .footer-bar { border-radius: 15px; bottom: 10px; }
+      .footer-bar { border-radius: 15px; bottom: 10px; padding: 10px 20px; }
     }
   </style>
 </head>
@@ -100,20 +107,22 @@
   <div id="modalOverlay" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>発注内容の確認</h3>
+        <h3>発注内容の最終確認</h3>
       </div>
-      <div id="modalStoreInfo" style="margin-bottom: 15px; font-weight: bold; color: #666;"></div>
-      <ul id="orderSummaryList" class="order-summary-list">
-        </ul>
+      <div id="modalStoreInfo" style="margin-bottom: 15px; font-weight: bold; color: #333; background: #f0f7ff; padding: 10px; border-radius: 6px;"></div>
+      
+      <p style="font-size: 0.8em; color: #888; margin-bottom: 5px;">× ボタンで削除できます</p>
+      <ul id="orderSummaryList" class="order-summary-list"></ul>
+      
       <div class="modal-footer">
-        <button class="btn-modal btn-cancel" onclick="closeModal()">修正する</button>
-        <button class="btn-modal btn-execute" id="finalSubmitBtn" onclick="executeSubmit()">これで確定！</button>
+        <button class="btn-modal btn-cancel" onclick="closeModal()">修正に戻る</button>
+        <button class="btn-modal btn-execute" id="finalSubmitBtn" onclick="executeSubmit()">これで送信！</button>
       </div>
     </div>
   </div>
 
   <script>
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbyr3ps5gUhQnLOZGRnAvcwqqLXrCkkh8lIt560-phkENPUe28Vv6dWNYlGsOTZ9PN8K/exec'; // ★ここに自分のGASのURLを貼る
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbyr3ps5gUhQnLOZGRnAvcwqqLXrCkkh8lIt560-phkENPUe28Vv6dWNYlGsOTZ9PN8K/exec'; // ★最新のGASのURLに書き換え
     const SIZES = ['A0', 'A1', 'B0', 'A2', 'A3'];
     let orderItems = [];
 
@@ -166,10 +175,15 @@
       btn.innerText = 'OK! ✔';
       btn.classList.add('active');
       setTimeout(() => { btn.innerText = '追加'; btn.classList.remove('active'); }, 700);
+      updateCartCount();
+    }
+
+    // カート数の更新
+    function updateCartCount() {
       document.getElementById('cartCount').innerText = orderItems.length;
     }
 
-    // ★ポップアップを表示する処理★
+    // ★ポップアップを表示し、リストを構築する★
     function showConfirmation() {
       const store = document.getElementById('storeSelect').value;
       const user = document.getElementById('userName').value;
@@ -179,26 +193,51 @@
         return;
       }
 
+      document.getElementById('modalStoreInfo').innerText = `店舗：${store} / 発注者：${user}`;
+      renderModalList();
+      document.getElementById('modalOverlay').style.display = 'flex';
+    }
+
+    // ★ポップアップ内のリストを描画（削除ボタン付き）★
+    function renderModalList() {
       const listContainer = document.getElementById('orderSummaryList');
       listContainer.innerHTML = '';
-      document.getElementById('modalStoreInfo').innerText = `店舗：${store} / 発注者：${user}`;
 
-      orderItems.forEach(item => {
+      if(orderItems.length === 0) {
+        listContainer.innerHTML = '<li style="text-align:center; padding:20px; color:#999;">選択中のアイテムはありません</li>';
+        return;
+      }
+
+      orderItems.forEach((item, index) => {
         const li = document.createElement('li');
         li.className = 'order-summary-item';
-        li.innerHTML = `<span>${item.name} <small>(${item.size === '-' ? '備品' : item.size})</small></span> <b>${item.quantity}</b>`;
+        li.innerHTML = `
+          <div class="item-name-box">
+            ${item.name} <br>
+            <small style="color:#666;">[${item.size === '-' ? '備品' : item.size}]</small>
+          </div>
+          <div class="item-qty-box">${item.quantity}</div>
+          <button class="btn-remove" onclick="removeItem(${index})">×</button>
+        `;
         listContainer.appendChild(li);
       });
+    }
 
-      document.getElementById('modalOverlay').style.display = 'flex';
+    // ★特定のアイテムを削除する★
+    function removeItem(index) {
+      orderItems.splice(index, 1); // 配列から削除
+      updateCartCount(); // フッターの数字を更新
+      renderModalList(); // ポップアップ内のリストを再描画
     }
 
     function closeModal() {
       document.getElementById('modalOverlay').style.display = 'none';
     }
 
-    // ★実際に送信する処理★
+    // ★最終送信★
     async function executeSubmit() {
+      if (orderItems.length === 0) return;
+      
       const btn = document.getElementById('finalSubmitBtn');
       const store = document.getElementById('storeSelect').value;
       const user = document.getElementById('userName').value;
@@ -219,7 +258,7 @@
       } catch (e) {
         alert('エラーが発生しました。');
         btn.disabled = false;
-        btn.innerText = 'これで確定！';
+        btn.innerText = 'これで送信！';
       }
     }
   </script>
