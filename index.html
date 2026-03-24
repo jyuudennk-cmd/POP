@@ -24,12 +24,26 @@
     <label>発注店舗: 
       <select id="storeSelect">
         <option value="">選択してください</option>
-        <option value="店舗A">店舗A</option>
-        <option value="店舗B">店舗B</option>
+        <option value="与野">与野</option>
+        <option value="川口前川">川口前川</option>
+        <option value="北戸田">北戸田</option>
+        <option value="浦和美園">浦和美園</option>
+        <option value="水戸内原">水戸内原</option>
+        <option value="つくば">つくば</option>
+        <option value="新発田">新発田</option>
+        <option value="新潟亀田">新潟亀田</option>
+        <option value="須坂">須坂</option>
+        <option value="大井">大井</option>
+        <option value="熊谷">熊谷</option>
+        <option value="レイクタウン">レイクタウン</option>
+        <option value="新潟青山">新潟青山</option>
+        <option value="上越">上越</option>
+        <option value="下妻">下妻</option> 
+        <option value="佐久平">佐久平</option>        
         </select>
     </label>
     <br><br>
-    <label>発注者名: <input type="text" id="userName" placeholder="例: 山田 太郎"></label>
+    <label>発注者名: <input type="text" id="userName" placeholder="例: 山田 裕太郎"></label>
   </div>
 
   <div id="itemList">
@@ -41,8 +55,8 @@
   </div>
 
   <script>
-    //https://script.google.com/macros/s/AKfycbwdEX5K1iG4LL1BZ_yhJeGRAgw4arI-JGozG-9bWpaYtkp9S3gJC5veoHscheNYSdOw/exec
-    const GAS_URL = 'あなたのGASのURL';
+    // ★先ほどGASで発行したウェブアプリのURLをここに入力★
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbyYM_Mff4w7nORA7i2wFqB-VBtF-UBoQyrj07Sm3Rav9gOzFWZzW2qkegl1pFjt_Fd3/exec';
 
     let orderItems = [];
 
