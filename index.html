@@ -5,23 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>POP・備品発注システム</title>
   <style>
-    body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
-    .header-info { margin-bottom: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; }
-    .item-card { display: flex; align-items: center; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; }
-    .item-card img { width: 100px; height: 100px; object-fit: cover; margin-right: 15px; }
-    .item-details { flex-grow: 1; }
-    .btn-select { padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-    .btn-select.selected { background: #28a745; }
-    .submit-area { margin-top: 30px; text-align: center; }
-    .btn-submit { padding: 15px 40px; background: #dc3545; color: white; font-size: 1.2em; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+    :root { --primary: #007bff; --success: #28a745; --bg: #f8f9fa; }
+    body { font-family: "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: #333; line-height: 1.6; padding: 20px; max-width: 900px; margin: 0 auto; }
+    h1 { text-align: center; color: #444; margin-bottom: 30px; }
+
+    /* ヘッダーエリア */
+    .config-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 25px; display: flex; flex-wrap: wrap; gap: 20px; }
+    .input-group { flex: 1; min-width: 200px; }
+    .input-group label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 0.9em; }
+    select, input[type="text"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+
+    /* アイテムリスト */
+    .item-grid { display: grid; grid-template-columns: 1fr; gap: 15px; }
+    .item-card { background: white; border-radius: 12px; padding: 15px; display: flex; align-items: flex-start; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .item-card img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; margin-right: 20px; background: #eee; }
+    .item-info { flex: 1; }
+    .item-info h3 { margin: 0 0 12px 0; font-size: 1.1em; color: #222; }
+
+    /* サイズ・ボタン操作 */
+    .controls-container { display: flex; flex-wrap: wrap; gap: 10px; }
+    .control-unit { display: flex; align-items: center; background: #f1f3f5; padding: 5px 10px; border-radius: 6px; border: 1px solid #e9ecef; }
+    .label-tag { font-weight: bold; width: 30px; font-size: 0.85em; }
+    .qty-input { width: 50px; border: 1px solid #ccc; border-radius: 4px; padding: 4px; margin-right: 8px; text-align: center; }
+    
+    .btn-add { background: var(--primary); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 0.85em; }
+    .btn-add.active { background: var(--success); }
+    .btn-add:active { transform: translateY(2px); }
+
+    /* フッター送信エリア */
+    .footer-bar { position: sticky; bottom: 20px; background: white; padding: 20px; border-radius: 50px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); margin-top: 40px; text-align: center; display: flex; justify-content: space-between; align-items: center; }
+    .cart-info { font-weight: bold; color: var(--primary); margin-left: 20px; }
+    .btn-submit { background: #e63946; color: white; border: none; padding: 12px 40px; border-radius: 30px; font-size: 1.1em; font-weight: bold; cursor: pointer; margin-right: 10px; }
+    .btn-submit:disabled { background: #ccc; }
+
+    @media (max-width: 600px) {
+      .item-card { flex-direction: column; }
+      .item-card img { width: 100%; height: 150px; margin-bottom: 15px; }
+    }
   </style>
 </head>
 <body>
 
-  <h1>発注システム</h1>
+  <h1>備品・POP発注ツール</h1>
 
-  <div class="header-info">
-    <label>発注店舗: 
+  <div class="config-card">
+    <div class="input-group">
+      <label>発注店舗</label>
       <select id="storeSelect">
         <option value="">選択してください</option>
         <option value="与野">与野</option>
@@ -39,126 +68,124 @@
         <option value="新潟青山">新潟青山</option>
         <option value="上越">上越</option>
         <option value="下妻">下妻</option> 
-        <option value="佐久平">佐久平</option>        
-        </select>
-    </label>
-    <br><br>
-    <label>発注者名: <input type="text" id="userName" placeholder="例: 山田 裕太郎"></label>
+        <option value="佐久平">佐久平</option>       
+      </select>
+    </div>
+    <div class="input-group">
+      <label>発注者名</label>
+      <input type="text" id="userName" placeholder="お名前を入力">
+    </div>
   </div>
 
-  <div id="itemList">
-    <p>アイテムデータを読み込み中...</p>
+  <div id="itemList" class="item-grid">
+    <p style="text-align: center;">データを読み込み中...</p>
   </div>
 
-  <div class="submit-area">
-    <button class="btn-submit" onclick="submitOrder()">発注を確定する</button>
+  <div class="footer-bar">
+    <div class="cart-info">現在の選択数: <span id="cartCount">0</span> 点</div>
+    <button class="btn-submit" id="submitBtn" onclick="submitOrder()">発注を確定する</button>
   </div>
 
   <script>
-    // ★先ほどGASで発行したウェブアプリのURLをここに入力★
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbyYM_Mff4w7nORA7i2wFqB-VBtF-UBoQyrj07Sm3Rav9gOzFWZzW2qkegl1pFjt_Fd3/exec';
-
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwtq4J0SsgRNJ8mLByqMXX0ytq6ieC1SiUfLiLVAFIobPi-chiwKyff28ErfjSIBCXk/exec';
+    const SIZES = ['A0', 'A1', 'B0', 'A2', 'A3'];
     let orderItems = [];
 
-    // 画面ロード時にアイテムを取得
-    window.onload = async function() {
+    // 起動時にマスタ取得
+    window.onload = async () => {
       try {
-        const response = await fetch(GAS_URL);
-        const items = await response.json();
+        const res = await fetch(GAS_URL);
+        const items = await res.json();
         renderItems(items);
-      } catch (error) {
-        document.getElementById('itemList').innerHTML = '<p>読み込みに失敗しました。</p>';
+      } catch (e) {
+        document.getElementById('itemList').innerHTML = 'データの取得に失敗しました。';
       }
     };
 
-    // アイテムを画面に表示する処理
     function renderItems(items) {
       const container = document.getElementById('itemList');
       container.innerHTML = '';
 
-      items.forEach((item, index) => {
-        let inputHtml = '';
+      items.forEach((item, idx) => {
+        let html = `<div class="item-card">
+          <img src="${item.imageUrl}" alt="${item.name}">
+          <div class="item-info">
+            <h3>${item.name}</h3>
+            <div class="controls-container">`;
+
         if (item.type === 'POP') {
-          inputHtml = `
-            <select id="detail-${index}">
-              <option value="A3">A3</option>
-              <option value="A2">A2</option>
-              <option value="A1">A1</option>
-              <option value="A0">A0</option>
-              <option value="B0">B0</option>
-            </select>`;
+          SIZES.forEach(sz => {
+            html += `
+              <div class="control-unit">
+                <span class="label-tag">${sz}</span>
+                <input type="number" id="q-${idx}-${sz}" value="1" min="1" class="qty-input">
+                <button class="btn-add" id="b-${idx}-${sz}" onclick="addItem('${item.name}', '${sz}', ${idx})">追加</button>
+              </div>`;
+          });
         } else {
-          inputHtml = `<input type="number" id="detail-${index}" value="1" min="1" style="width: 60px;"> 個`;
+          html += `
+            <div class="control-unit">
+              <span class="label-tag">個</span>
+              <input type="number" id="q-${idx}-none" value="1" min="1" class="qty-input">
+              <button class="btn-add" id="b-${idx}-none" onclick="addItem('${item.name}', '-', ${idx})">追加</button>
+            </div>`;
         }
 
-        const card = document.createElement('div');
-        card.className = 'item-card';
-        card.innerHTML = `
-          <img src="${item.imageUrl}" alt="${item.name}">
-          <div class="item-details">
-            <h3>${item.name}</h3>
-            ${inputHtml}
-          </div>
-          <button class="btn-select" id="btn-${index}" onclick="toggleSelect(${index}, '${item.name}')">追加</button>
-        `;
-        container.appendChild(card);
+        html += `</div></div></div>`;
+        container.innerHTML += html;
       });
     }
 
-    // 「追加」ボタンが押された時の処理（選択状態の切り替え）
-    function toggleSelect(index, itemName) {
-      const btn = document.getElementById(`btn-${index}`);
-      const detailValue = document.getElementById(`detail-${index}`).value;
+    // 追加ボタン押下時
+    function addItem(name, size, idx) {
+      const qId = size === '-' ? `q-${idx}-none` : `q-${idx}-${size}`;
+      const bId = size === '-' ? `b-${idx}-none` : `b-${idx}-${size}`;
+      const qty = document.getElementById(qId).value;
+      const btn = document.getElementById(bId);
 
-      if (btn.classList.contains('selected')) {
-        // 選択解除
-        btn.classList.remove('selected');
+      orderItems.push({ name: name, size: size, quantity: qty });
+      
+      // ボタンの応答フィードバック
+      btn.innerText = 'OK! ✔';
+      btn.classList.add('active');
+      setTimeout(() => {
         btn.innerText = '追加';
-        orderItems = orderItems.filter(i => i.name !== itemName);
-      } else {
-        // 選択
-        btn.classList.add('selected');
-        btn.innerText = '選択済';
-        orderItems.push({ name: itemName, detail: detailValue });
-      }
+        btn.classList.remove('active');
+      }, 800);
+
+      document.getElementById('cartCount').innerText = orderItems.length;
     }
 
-    // 発注確定ボタンの処理
+    // 発注確定
     async function submitOrder() {
       const store = document.getElementById('storeSelect').value;
       const user = document.getElementById('userName').value;
+      const btn = document.getElementById('submitBtn');
 
-      if (!store || !user) {
-        alert('店舗名と発注者名を入力してください。');
-        return;
-      }
-      if (orderItems.length === 0) {
-        alert('発注するアイテムが一つも選択されていません。');
+      if (!store || !user || orderItems.length === 0) {
+        alert('店舗、氏名の入力、およびアイテムの選択が必要です。');
         return;
       }
 
-      const payload = { store: store, user: user, items: orderItems };
+      if(!confirm('この内容で発注を確定しますか？')) return;
 
-      // 送信中のボタン表示変更
-      const submitBtn = document.querySelector('.btn-submit');
-      submitBtn.innerText = '送信中...';
-      submitBtn.disabled = true;
+      btn.disabled = true;
+      btn.innerText = '送信中...';
 
       try {
-        const response = await fetch(GAS_URL, {
+        const res = await fetch(GAS_URL, {
           method: 'POST',
-          body: JSON.stringify(payload)
+          body: JSON.stringify({ store: store, user: user, items: orderItems })
         });
-        
-        const result = await response.json();
-        if(result.status === "success"){
+        const result = await res.json();
+        if (result.status === 'success') {
           alert('発注が完了しました！');
-          location.reload(); // 画面をリセット
+          location.reload();
         }
-      } catch (error) {
-        alert('通信エラーが発生しました。もう一度お試しください。');
-        submitBtn.innerText = '発注を確定する';
-        submitBtn.disabled = false;
+      } catch (e) {
+        alert('エラーが発生しました。');
+        btn.disabled = false;
+        btn.innerText = '発注を確定する';
       }
     }
   </script>
