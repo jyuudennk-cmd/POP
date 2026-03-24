@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>POP・備品発注システム</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+    .header-info { margin-bottom: 20px; padding: 15px; background: #f0f0f0; border-radius: 8px; }
+    .item-card { display: flex; align-items: center; border: 1px solid #ddd; padding: 15px; margin-bottom: 10px; border-radius: 8px; }
+    .item-card img { width: 100px; height: 100px; object-fit: cover; margin-right: 15px; }
+    .item-details { flex-grow: 1; }
+    .btn-select { padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-select.selected { background: #28a745; }
+    .submit-area { margin-top: 30px; text-align: center; }
+    .btn-submit { padding: 15px 40px; background: #dc3545; color: white; font-size: 1.2em; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
+  </style>
+</head>
+<body>
+
+  <h1>発注システム</h1>
+
+  <div class="header-info">
+    <label>発注店舗: 
+      <select id="storeSelect">
+        <option value="">選択してください</option>
+        <option value="店舗A">店舗A</option>
+        <option value="店舗B">店舗B</option>
+        </select>
+    </label>
+    <br><br>
+    <label>発注者名: <input type="text" id="userName" placeholder="例: 山田 太郎"></label>
+  </div>
+
+  <div id="itemList">
+    <p>アイテムデータを読み込み中...</p>
+  </div>
+
+  <div class="submit-area">
+    <button class="btn-submit" onclick="submitOrder()">発注を確定する</button>
+  </div>
+
+  <script>
+    //https://script.google.com/macros/s/AKfycbwdEX5K1iG4LL1BZ_yhJeGRAgw4arI-JGozG-9bWpaYtkp9S3gJC5veoHscheNYSdOw/exec
+    const GAS_URL = 'あなたのGASのURL';
+
+    let orderItems = [];
+
+    // 画面ロード時にアイテムを取得
+    window.onload = async function() {
+      try {
+        const response = await fetch(GAS_URL);
+        const items = await response.json();
+        renderItems(items);
+      } catch (error) {
+        document.getElementById('itemList').innerHTML = '<p>読み込みに失敗しました。</p>';
+      }
+    };
+
+    // アイテムを画面に表示する処理
+    function renderItems(items) {
+      const container = document.getElementById('itemList');
+      container.innerHTML = '';
+
+      items.forEach((item, index) => {
+        let inputHtml = '';
+        if (item.type === 'POP') {
+          inputHtml = `
+            <select id="detail-${index}">
+              <option value="A3">A3</option>
+              <option value="A2">A2</option>
+              <option value="A1">A1</option>
+              <option value="A0">A0</option>
+              <option value="B0">B0</option>
+            </select>`;
+        } else {
+          inputHtml = `<input type="number" id="detail-${index}" value="1" min="1" style="width: 60px;"> 個`;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        card.innerHTML = `
+          <img src="${item.imageUrl}" alt="${item.name}">
+          <div class="item-details">
+            <h3>${item.name}</h3>
+            ${inputHtml}
+          </div>
+          <button class="btn-select" id="btn-${index}" onclick="toggleSelect(${index}, '${item.name}')">追加</button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // 「追加」ボタンが押された時の処理（選択状態の切り替え）
+    function toggleSelect(index, itemName) {
+      const btn = document.getElementById(`btn-${index}`);
+      const detailValue = document.getElementById(`detail-${index}`).value;
+
+      if (btn.classList.contains('selected')) {
+        // 選択解除
+        btn.classList.remove('selected');
+        btn.innerText = '追加';
+        orderItems = orderItems.filter(i => i.name !== itemName);
+      } else {
+        // 選択
+        btn.classList.add('selected');
+        btn.innerText = '選択済';
+        orderItems.push({ name: itemName, detail: detailValue });
+      }
+    }
+
+    // 発注確定ボタンの処理
+    async function submitOrder() {
+      const store = document.getElementById('storeSelect').value;
+      const user = document.getElementById('userName').value;
+
+      if (!store || !user) {
+        alert('店舗名と発注者名を入力してください。');
+        return;
+      }
+      if (orderItems.length === 0) {
+        alert('発注するアイテムが一つも選択されていません。');
+        return;
+      }
+
+      const payload = { store: store, user: user, items: orderItems };
+
+      // 送信中のボタン表示変更
+      const submitBtn = document.querySelector('.btn-submit');
+      submitBtn.innerText = '送信中...';
+      submitBtn.disabled = true;
+
+      try {
+        const response = await fetch(GAS_URL, {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        
+        const result = await response.json();
+        if(result.status === "success"){
+          alert('発注が完了しました！');
+          location.reload(); // 画面をリセット
+        }
+      } catch (error) {
+        alert('通信エラーが発生しました。もう一度お試しください。');
+        submitBtn.innerText = '発注を確定する';
+        submitBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
