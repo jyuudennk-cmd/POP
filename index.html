@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>POP発注</title>
+  <title>POP・備品発注</title>
   <style>
     :root { --main: #007bff; --bg: #f2f4f7; --white: #ffffff; }
     body { font-family: sans-serif; background: var(--bg); margin: 0; padding-bottom: 100px; font-size: 16px; }
@@ -24,9 +24,12 @@
     .pop-img { width: 90px; height: 90px; object-fit: cover; border-radius: 8px; background: #eee; border: 1px solid #eee; flex-shrink: 0; }
     .pop-info { flex: 1; }
     .pop-name { font-weight: bold; font-size: 1em; margin-bottom: 10px; display: block; }
+    
+    /* ボタン群 */
     .size-btns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
-    .btn-s { border: 1px solid var(--main); background: #fff; color: var(--main); padding: 8px 0; border-radius: 6px; font-size: 0.8em; font-weight: bold; }
+    .btn-s { border: 1px solid var(--main); background: #fff; color: var(--main); padding: 8px 0; border-radius: 6px; font-size: 0.8em; font-weight: bold; cursor: pointer; }
     .btn-s:active { background: var(--main); color: #fff; }
+    .btn-equip { background: var(--main); color: #fff; border: none; padding: 8px 15px; border-radius: 6px; font-weight: bold; width: 100%; cursor: pointer; }
 
     /* フリー入力欄 */
     .sp-row { border-bottom: 1px dashed #ccc; padding: 15px 0; }
@@ -39,7 +42,7 @@
 
     /* フッター */
     .footer { position: fixed; bottom: 0; width: 100%; background: #fff; padding: 15px; box-shadow: 0 -3px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; box-sizing: border-box; }
-    .btn-go { background: #dc3545; color: #fff; border: none; padding: 12px 30px; border-radius: 30px; font-weight: bold; font-size: 1em; }
+    .btn-go { background: #dc3545; color: #fff; border: none; padding: 12px 30px; border-radius: 30px; font-weight: bold; font-size: 1em; cursor: pointer; }
 
     /* モーダル */
     .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
@@ -62,7 +65,7 @@
       <input type="text" id="userName" placeholder="名前を入力">
     </div>
 
-    <h3>定番POPリスト (画像あり)</h3>
+    <h3>定番リスト</h3>
     <div id="masterList"></div>
 
     <h3>リスト外・フリー入力</h3>
@@ -87,21 +90,21 @@
       <h3 style="text-align:center">最終確認</h3>
       <div id="summaryList"></div>
       <div style="display:flex; gap:10px; margin-top:20px;">
-        <button onclick="closeModal()" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ccc; background:#fff;">戻る</button>
-        <button id="execBtn" onclick="submit()" style="flex:1; padding:12px; border-radius:8px; border:none; background:var(--main); color:#fff; font-weight:bold;">送信確定</button>
+        <button onclick="closeModal()" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ccc; background:#fff; cursor:pointer;">戻る</button>
+        <button id="execBtn" onclick="submit()" style="flex:1; padding:12px; border-radius:8px; border:none; background:var(--main); color:#fff; font-weight:bold; cursor:pointer;">送信確定</button>
       </div>
     </div>
   </div>
 
   <script>
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbx660aPxXL_fAr1YDThZZOwZce9sCd_0Dv5O_a-uXLwVc9ovvFN7C6q1S0O5ZVX9NjE/exec';
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbz5Af8YqM2OMDlRxJuaqo1nxmLKy766ioc4j1k6do1ibb-3EZV8Ds6mq9JlOk9KsHry/exec';
     const SIZES = ['A0', 'A1', 'B0', 'A2', 'A3', 'B1'];
     let mData = [], lData = [], cart = [];
 
-    // フリー入力欄15行生成
+    // フリー入力欄10行生成
     const spList = document.getElementById('specialList');
-    for(let i=1; i<=15; i++){
-      spList.innerHTML += `<div class="sp-row"><input type="text" class="sp-n" placeholder="商品名 ${i}"><div style="display:flex; gap:5px;"><input type="text" class="sp-s" placeholder="サイズ"><input type="number" class="sp-q" value="1" min="1" style="width:70px;"></div></div>`;
+    for(let i=1; i<=10; i++){
+      spList.innerHTML += `<div class="sp-row"><input type="text" class="sp-n" placeholder="商品名 ${i}"><div style="display:flex; gap:5px;"><input type="text" class="sp-s" placeholder="サイズ(備品は空欄でOK)"><input type="number" class="sp-q" value="1" min="1" style="width:70px;"></div></div>`;
     }
 
     // Googleドライブ直リンク変換
@@ -121,14 +124,24 @@
           s.innerHTML = '<option value="">選択してください</option>';
           data.stores.forEach(st => s.innerHTML += `<option value="${st}">${st}</option>`);
         });
+
+        // ★マスタの描画（POPと備品で分岐）★
         const mArea = document.getElementById('masterList');
         mData.forEach((it, i) => {
+          let controlsHtml = '';
+          if (it.type === 'POP') {
+            controlsHtml = `<div class="size-btns">${SIZES.map(sz => `<button class="btn-s" onclick="add('${it.name}','${sz}', 'POP')">${sz}</button>`).join('')}</div>`;
+          } else {
+            // 備品の場合
+            controlsHtml = `<button class="btn-equip" onclick="add('${it.name}','-', '備品')">個数を入力して追加</button>`;
+          }
+
           mArea.innerHTML += `
             <div class="card pop-card">
               <img src="${driveUrl(it.imageUrl)}" class="pop-img" onerror="this.src='https://placehold.jp/24/999/ffffff/100x100.png?text=NoImage'">
               <div class="pop-info">
                 <span class="pop-name">${it.name}</span>
-                <div class="size-btns">${SIZES.map(sz => `<button class="btn-s" onclick="add('${it.name}','${sz}')">${sz}</button>`).join('')}</div>
+                ${controlsHtml}
               </div>
             </div>`;
         });
@@ -141,8 +154,10 @@
       document.querySelectorAll('.section').forEach(s => s.classList.toggle('active', s.id === id));
     }
 
-    function add(n, s) {
-      const q = prompt(`${n} (${s}) の枚数`, "1");
+    // ★追加時のアラートをPOPと備品で出し分ける★
+    function add(n, s, type) {
+      const msg = (type === 'POP') ? `${n} (${s}) の【枚数】を入力してください` : `${n} の【個数】を入力してください`;
+      const q = prompt(msg, "1");
       if(!q || isNaN(q) || q <= 0) return;
       cart.push({ name: n, size: s, quantity: q });
       updateCount();
@@ -158,7 +173,10 @@
       const area = document.getElementById('logArea'); area.innerHTML = '';
       const filtered = f ? lData.filter(l => l.store === f) : lData;
       filtered.forEach(l => {
-        area.innerHTML += `<div class="log-card"><div class="log-top"><span>${l.date}</span><span>${l.user}</span></div><div class="log-main"><span>${l.itemName} (${l.size})</span><span>${l.qty}枚</span></div></div>`;
+        // 備品かPOPかで「枚/個」の表示を変える
+        const unit = (l.size === '-' || !l.size) ? '個' : '枚';
+        const sizeDisp = (l.size === '-' || !l.size) ? '備品' : l.size;
+        area.innerHTML += `<div class="log-card"><div class="log-top"><span>${l.date}</span><span>${l.user}</span></div><div class="log-main"><span>${l.itemName} (${sizeDisp})</span><span>${l.qty}${unit}</span></div></div>`;
       });
     }
 
@@ -168,11 +186,16 @@
       if(!st || !us) return alert("店舗・名前は必須です");
       const final = [...cart];
       const sn = document.querySelectorAll('.sp-n'), ss = document.querySelectorAll('.sp-s'), sq = document.querySelectorAll('.sp-q');
-      sn.forEach((el, i) => { if(el.value.trim()) final.push({ name: el.value, size: ss[i].value, quantity: sq[i].value }); });
+      sn.forEach((el, i) => { if(el.value.trim()) final.push({ name: el.value, size: ss[i].value || '-', quantity: sq[i].value }); });
       if(!final.length) return alert("注文がありません");
-      const sList = document.getElementById('summaryList'); sList.innerHTML = `<p>店舗: ${st} / 担当: ${us}</p>`;
+      
+      const sList = document.getElementById('summaryList'); 
+      sList.innerHTML = `<p>店舗: <b>${st}</b> / 担当: <b>${us}</b></p>`;
+      
       final.forEach((it, i) => {
-        sList.innerHTML += `<div class="sum-row"><div><b>${it.name}</b><br><small>${it.size || '-'}</small></div><div><b>${it.quantity}枚</b><button onclick="del(${i})" style="margin-left:10px; color:red; border:none; background:none; font-size:1.2em;">×</button></div></div>`;
+        const sizeDisp = (it.size === '-' || !it.size) ? '備品' : it.size;
+        const unit = (it.size === '-' || !it.size) ? '個' : '枚';
+        sList.innerHTML += `<div class="sum-row"><div style="flex:1;"><b>${it.name}</b><br><small style="color:#666;">${sizeDisp}</small></div><div style="font-size:1.1em;"><b>${it.quantity}${unit}</b><button onclick="del(${i})" style="margin-left:15px; color:red; border:none; background:none; font-size:1.3em; cursor:pointer;">×</button></div></div>`;
       });
       window.temp = final; document.getElementById('modal').style.display = 'flex';
     }
@@ -190,7 +213,7 @@
       try {
         const res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
         if((await res.json()).status === 'success'){ alert("発注しました！"); location.reload(); }
-      } catch(e) { alert("失敗"); b.disabled = false; b.innerText = "送信確定"; }
+      } catch(e) { alert("通信エラーが発生しました"); b.disabled = false; b.innerText = "送信確定"; }
     }
   </script>
 </body>
