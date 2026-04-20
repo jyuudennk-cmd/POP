@@ -101,9 +101,9 @@
     const SIZES = ['A0', 'A1', 'B0', 'A2', 'A3', 'B1'];
     let mData = [], lData = [], cart = [];
 
-    // フリー入力欄10行生成
+    // フリー入力欄15行生成
     const spList = document.getElementById('specialList');
-    for(let i=1; i<=10; i++){
+    for(let i=1; i<=15; i++){
       spList.innerHTML += `<div class="sp-row"><input type="text" class="sp-n" placeholder="商品名 ${i}"><div style="display:flex; gap:5px;"><input type="text" class="sp-s" placeholder="サイズ(備品は空欄でOK)"><input type="number" class="sp-q" value="1" min="1" style="width:70px;"></div></div>`;
     }
 
